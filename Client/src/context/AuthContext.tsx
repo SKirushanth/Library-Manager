@@ -1,30 +1,67 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState } from "react";
+import type { ReactNode } from "react";
 
 interface AuthContextType {
   token: string | null;
   role: string | null;
-  login: (token: string, role: string) => void;
+  userId: number | null;
+  userName: string | null;
+  login: (
+    token: string,
+    role: string,
+    userId: number,
+    userName: string,
+  ) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token"),
+  );
+  const [role, setRole] = useState<string | null>(localStorage.getItem("role"));
+  const [userId, setUserId] = useState<number | null>(
+    localStorage.getItem("userId")
+      ? Number(localStorage.getItem("userId"))
+      : null,
+  );
+  const [userName, setUserName] = useState<string | null>(
+    localStorage.getItem("userName"),
+  );
 
-  const login = (token: string, role: string) => {
+  const login = (
+    token: string,
+    role: string,
+    userId: number,
+    userName: string,
+  ) => {
     setToken(token);
     setRole(role);
+    setUserId(userId);
+    setUserName(userName);
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", role);
+    localStorage.setItem("userId", String(userId));
+    localStorage.setItem("userName", userName);
   };
 
   const logout = () => {
     setToken(null);
     setRole(null);
+    setUserId(null);
+    setUserName(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
   };
 
   return (
-    <AuthContext.Provider value={{ token, role, login, logout }}>
+    <AuthContext.Provider
+      value={{ token, role, userId, userName, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
