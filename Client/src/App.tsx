@@ -1,18 +1,260 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
+import Navbar from "./components/Navbar.tsx";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BooksPage from "./pages/BooksPage";
 import BookDetailPage from "./pages/BooksDetailPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
+import { useAuth } from "./context/AuthContext.tsx";
+import "./App.css"; // Ensure your CSS file is imported here
+
+type AuthMode = "login" | "register";
 
 function App() {
+  const { login } = useAuth();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authSuccess, setAuthSuccess] = useState("");
+
+  const resetAuthFields = () => {
+    setEmail("");
+    setPassword("");
+    setName("");
+    setAuthError("");
+    setAuthSuccess("");
+  };
+
+  const openAuth = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setIsClosing(false);
+    setIsAuthOpen(true);
+    setAuthError("");
+    setAuthSuccess("");
+  };
+
+  const closeAuth = () => {
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setIsAuthOpen(false);
+      setIsClosing(false);
+      resetAuthFields();
+    }, 240);
+  };
+
+  const navigateInApp = (path: string) => {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  const handleLoginSubmit = () => {
+    if (!email || !password) {
+      setAuthError("Please fill in all fields.");
+      setAuthSuccess("");
+      return;
+    }
+
+    const isAdmin = email === "admin@library.com" && password === "admin123";
+    login(
+      "fake-token",
+      isAdmin ? "ADMIN" : "USER",
+      0,
+      isAdmin ? "Admin" : "User",
+    );
+    setAuthError("");
+    setAuthSuccess("Welcome back. Redirecting...");
+
+    window.setTimeout(() => {
+      closeAuth();
+      navigateInApp(isAdmin ? "/admin" : "/books");
+    }, 500);
+  };
+
+  const handleRegisterSubmit = () => {
+    if (!name || !email || !password) {
+      setAuthError("Please fill in all fields.");
+      setAuthSuccess("");
+      return;
+    }
+
+    if (password.length < 6) {
+      setAuthError("Password must be at least 6 characters.");
+      setAuthSuccess("");
+      return;
+    }
+
+    setAuthError("");
+    setAuthSuccess("Registration successful. Please sign in.");
+    window.setTimeout(() => {
+      setAuthMode("login");
+      setPassword("");
+    }, 450);
+  };
+
+  useEffect(() => {
+    if (!isAuthOpen) return;
+
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeAuth();
+    };
+
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [isAuthOpen]);
+
+  useEffect(() => {
+    document.body.style.overflow = isAuthOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isAuthOpen]);
+
   return (
     <BrowserRouter>
-      <Navbar />
+      <Navbar
+        onLoginClick={() => openAuth("login")}
+        onRegisterClick={() => openAuth("register")}
+      />
+
+      {isAuthOpen && (
+        <div
+          className={`auth-overlay ${isClosing ? "is-closing" : ""}`}
+          onClick={closeAuth}
+        >
+          <div
+            className={`auth-modal ${isClosing ? "is-closing" : ""}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="auth-close"
+              onClick={closeAuth}
+              aria-label="Close authentication"
+            >
+              ×
+            </button>
+
+            <p className="auth-kicker">Access Your Library</p>
+            <h2>{authMode === "login" ? "Welcome Back" : "Create Account"}</h2>
+
+            <div className="auth-panels-viewport">
+              <div
+                className="auth-panels-track"
+                style={{
+                  transform:
+                    authMode === "login"
+                      ? "translateX(0%)"
+                      : "translateX(-50%)",
+                }}
+              >
+                <form
+                  className="auth-panel"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleLoginSubmit();
+                  }}
+                >
+                  <label htmlFor="overlay-email-login">Email</label>
+                  <input
+                    id="overlay-email-login"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+
+                  <label htmlFor="overlay-password-login">Password</label>
+                  <input
+                    id="overlay-password-login"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+
+                  <button type="submit" className="auth-submit">
+                    Login
+                  </button>
+                </form>
+
+                <form
+                  className="auth-panel"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleRegisterSubmit();
+                  }}
+                >
+                  <label htmlFor="overlay-name-register">Full Name</label>
+                  <input
+                    id="overlay-name-register"
+                    type="text"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+
+                  <label htmlFor="overlay-email-register">Email</label>
+                  <input
+                    id="overlay-email-register"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+
+                  <label htmlFor="overlay-password-register">Password</label>
+                  <input
+                    id="overlay-password-register"
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+
+                  <button type="submit" className="auth-submit">
+                    Register
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {(authError || authSuccess) && (
+              <p
+                className={`auth-feedback ${authError ? "is-error" : "is-success"}`}
+              >
+                {authError || authSuccess}
+              </p>
+            )}
+
+            <button
+              type="button"
+              className="auth-toggle"
+              onClick={() => {
+                setAuthError("");
+                setAuthSuccess("");
+                setAuthMode((prev) =>
+                  prev === "login" ? "register" : "login",
+                );
+              }}
+            >
+              {authMode === "login"
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Login"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <Routes>
         <Route path="/" element={<BooksPage />} />
+        {/* Keep these routes so direct links and redirects still work */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/books" element={<BooksPage />} />
