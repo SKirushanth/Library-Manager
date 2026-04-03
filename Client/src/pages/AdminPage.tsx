@@ -1,181 +1,258 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
+import Silk from "../components/Silk";
 
 interface Book {
   id: number;
   title: string;
   author: string;
   copiesAvailable: number;
+  imageUrl?: string;
 }
-
-const initialBooks: Book[] = [
-  {
-    id: 1,
-    title: "The Great Gatsby",
-    author: "F. Scott Fitzgerald",
-    copiesAvailable: 3,
-  },
-  { id: 2, title: "1984", author: "George Orwell", copiesAvailable: 2 },
-  {
-    id: 3,
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    copiesAvailable: 0,
-  },
-  { id: 4, title: "The Hobbit", author: "J.R.R. Tolkien", copiesAvailable: 5 },
-];
 
 function AdminPage() {
   const { token, role } = useAuth();
   const navigate = useNavigate();
 
-  const [books, setBooks] = useState<Book[]>(initialBooks);
+  const [books, setBooks] = useState<Book[]>([]);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [copies, setCopies] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Redirect if not admin
+  const CLOUD_NAME = "df8aj6mzn";
+  const UPLOAD_PRESET = "library_preset";
+
   useEffect(() => {
     if (!token || role !== "ADMIN") {
       navigate("/login");
+      return;
     }
-  }, [token, role]);
 
-  const handleAddBook = () => {
-    if (title === "" || author === "" || copies === "") {
+    const fetchBooks = async () => {
+      try {
+        const response = await api.get("/books");
+        setBooks(response.data ?? []);
+      } catch {
+        setError("Failed to load books from server.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, [token, role, navigate]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData },
+      );
+      const data = await response.json();
+      setImageUrl(data.secure_url ?? "");
+    } catch {
+      setError("Image upload failed.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAddBook = async () => {
+    if (!title || !author || !copies) {
       alert("Please fill in all fields");
       return;
     }
 
-    // Create new book and add to list
-    const newBook: Book = {
-      id: books.length + 1,
-      title,
-      author,
-      copiesAvailable: Number(copies),
-    };
-
-    setBooks([...books, newBook]);
-
-    // Clear inputs after adding
-    setTitle("");
-    setAuthor("");
-    setCopies("");
+    try {
+      const response = await api.post("/books", {
+        title,
+        author,
+        description: "",
+        copiesAvailable: Number(copies),
+        imageUrl,
+        pages: 0,
+        rating: 0,
+        badge: null,
+        coverColor: "#5d4037",
+        spineColor: "#3e2723",
+      });
+      setBooks((prev) => [...prev, response.data]);
+      setTitle("");
+      setAuthor("");
+      setCopies("");
+      setImageUrl("");
+    } catch {
+      setError("Failed to add book. Please check admin access.");
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setBooks(books.filter((b) => b.id !== id));
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this book?")) {
+      try {
+        await api.delete(`/books/${id}`);
+        setBooks((prev) => prev.filter((book) => book.id !== id));
+      } catch {
+        setError("Failed to delete book.");
+      }
+    }
   };
 
   return (
-    <div style={{ padding: "30px" }}>
-      <h2>Admin Dashboard</h2>
-
-      {/* Add book form */}
-      <div
-        style={{
-          background: "#f9f9f9",
-          padding: "20px",
-          borderRadius: "10px",
-          marginBottom: "30px",
-          border: "1px solid #eee",
-        }}
-      >
-        <h3 style={{ marginBottom: "15px" }}>Add New Book</h3>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <input
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            style={{
-              padding: "8px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              flex: 1,
-            }}
-          />
-          <input
-            placeholder="Author"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            style={{
-              padding: "8px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              flex: 1,
-            }}
-          />
-          <input
-            placeholder="Copies"
-            type="number"
-            value={copies}
-            onChange={(e) => setCopies(e.target.value)}
-            style={{
-              padding: "8px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              width: "80px",
-            }}
-          />
-          <button
-            onClick={handleAddBook}
-            style={{
-              padding: "8px 20px",
-              background: "#1a1a2e",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
-          >
-            Add Book
-          </button>
-        </div>
+    <div className="audible-exclusives admin-page-shell">
+      <div className="admin-silk-layer">
+        <Silk
+          color="#22201f"
+          speed={1.8}
+          scale={1.2}
+          noiseIntensity={1.4}
+          rotation={0.08}
+        />
       </div>
 
-      {/* Books list */}
-      <h3>All Books ({books.length})</h3>
-      {books.map((book) => (
-        <div
-          key={book.id}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            border: "1px solid #ddd",
-            padding: "15px 20px",
-            marginBottom: "10px",
-            borderRadius: "8px",
-          }}
-        >
-          <div>
-            <strong>{book.title}</strong>
-            <span style={{ color: "#555" }}> by {book.author}</span>
-            <span
-              style={{
-                marginLeft: "15px",
-                color: book.copiesAvailable > 0 ? "green" : "red",
-              }}
-            >
-              {book.copiesAvailable} copies
-            </span>
-          </div>
-          <button
-            onClick={() => handleDelete(book.id)}
-            style={{
-              padding: "6px 15px",
-              background: "none",
-              border: "1px solid red",
-              color: "red",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
-          >
-            Delete
-          </button>
+      <div className="admin-grain-overlay" />
+
+      <div className="admin-page-wrap">
+        <div className="audible-exclusives-header admin-header">
+          <p className="audible-exclusives-kicker">Management Dashboard</p>
+          <h2>Library Archive</h2>
+          <p className="audible-exclusives-subheadline">
+            Catalog and manage the digital collection of exclusive literary
+            assets.
+          </p>
         </div>
-      ))}
+
+        {error && (
+          <p className="auth-feedback is-error admin-feedback">{error}</p>
+        )}
+
+        <section
+          className="auth-modal admin-form-card"
+          aria-label="Add new book form"
+        >
+          <h3 className="exclusive-title admin-section-title">
+            Add New Volume
+          </h3>
+
+          <div className="auth-panel admin-form-grid">
+            <div className="admin-field admin-field-full">
+              <label>Book Title</label>
+              <input
+                placeholder="Enter title..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-field">
+              <label>Author Name</label>
+              <input
+                placeholder="Name"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-field admin-copies-field">
+              <label>Copies</label>
+              <input
+                type="number"
+                placeholder="1"
+                value={copies}
+                onChange={(e) => setCopies(e.target.value)}
+              />
+            </div>
+
+            <div className="admin-field admin-field-full">
+              <label>Cover Asset</label>
+              <label className="admin-upload-trigger">
+                <span className="admin-upload-box">
+                  {isUploading
+                    ? "Uploading..."
+                    : imageUrl
+                      ? "Cover Ready"
+                      : "Select Image File"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: "none" }}
+                />
+              </label>
+            </div>
+
+            <button
+              className="auth-submit admin-submit"
+              onClick={handleAddBook}
+              disabled={isUploading}
+            >
+              {isUploading ? "Processing..." : "Register Volume"}
+            </button>
+          </div>
+        </section>
+
+        <section className="admin-list-area" aria-label="Managed inventory">
+          <h3 className="exclusive-title admin-list-title">
+            Current Inventory ({books.length})
+          </h3>
+
+          {loading ? (
+            <p className="admin-loading">Synchronizing archive...</p>
+          ) : (
+            <div className="admin-books-list">
+              {books.map((book) => (
+                <article key={book.id} className="auth-modal admin-book-row">
+                  <div className="admin-book-main">
+                    <div className="spotlight-cover-art admin-mini-cover">
+                      {book.imageUrl ? (
+                        <img
+                          src={book.imageUrl}
+                          alt="cover"
+                          className="admin-cover-image"
+                        />
+                      ) : (
+                        <div className="admin-no-cover">N/A</div>
+                      )}
+                      <div className="exclusive-cover-sheen"></div>
+                    </div>
+
+                    <div className="admin-book-meta">
+                      <p className="exclusive-title admin-book-title">
+                        {book.title}
+                      </p>
+                      <p className="exclusive-author">{book.author}</p>
+                      <p className="admin-book-count">
+                        {book.copiesAvailable} copies in archive
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    className="auth-toggle admin-remove-btn"
+                    onClick={() => handleDelete(book.id)}
+                  >
+                    Remove
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
