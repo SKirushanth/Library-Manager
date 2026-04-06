@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.tsx";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import BooksPage from "./pages/BooksPage";
 import BookDetailPage from "./pages/BooksDetailPage";
-import DashboardPage from "./pages/DashboardPage";
+import MyLibraryPage from "./pages/MyLibraryPage";
 import AdminPage from "./pages/AdminPage";
+import Footer from "./components/Footer";
 import { useAuth } from "./context/AuthContext.tsx";
-import "./App.css"; // Ensure your CSS file is imported here
+import api from "./services/api";
+import "./App.css";
 
 type AuthMode = "login" | "register";
 
 function App() {
-  const { login } = useAuth();
+  const { login, role } = useAuth();
+  const location = useLocation();
+  const isAdminRoute = location.pathname === "/admin";
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
@@ -54,30 +58,35 @@ function App() {
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
-  const handleLoginSubmit = () => {
+  const handleLoginSubmit = async () => {
     if (!email || !password) {
       setAuthError("Please fill in all fields.");
       setAuthSuccess("");
       return;
     }
 
-    const isAdmin = email === "admin@library.com" && password === "admin123";
-    login(
-      "fake-token",
-      isAdmin ? "ADMIN" : "USER",
-      0,
-      isAdmin ? "Admin" : "User",
-    );
-    setAuthError("");
-    setAuthSuccess("Welcome back. Redirecting...");
+    try {
+      const response = await api.post("/auth/login", { email, password });
+      const { token, role: userRole, userId, name: userName } = response.data;
+      login(token, userRole, userId, userName);
+      setAuthError("");
+      setAuthSuccess("Welcome back. Redirecting...");
 
-    window.setTimeout(() => {
-      closeAuth();
-      navigateInApp(isAdmin ? "/admin" : "/books");
-    }, 500);
+      window.setTimeout(() => {
+        closeAuth();
+        navigateInApp(userRole === "ADMIN" ? "/admin" : "/books");
+      }, 500);
+    } catch (err: any) {
+      if (err.response?.status === 403 || err.response?.status === 401) {
+        setAuthError("Invalid email or password.");
+      } else {
+        setAuthError("Something went wrong. Try again.");
+      }
+      setAuthSuccess("");
+    }
   };
 
-  const handleRegisterSubmit = () => {
+  const handleRegisterSubmit = async () => {
     if (!name || !email || !password) {
       setAuthError("Please fill in all fields.");
       setAuthSuccess("");
@@ -90,12 +99,22 @@ function App() {
       return;
     }
 
-    setAuthError("");
-    setAuthSuccess("Registration successful. Please sign in.");
-    window.setTimeout(() => {
-      setAuthMode("login");
-      setPassword("");
-    }, 450);
+    try {
+      await api.post("/auth/register", { name, email, password });
+      setAuthError("");
+      setAuthSuccess("Registration successful. Please sign in.");
+      window.setTimeout(() => {
+        setAuthMode("login");
+        setPassword("");
+      }, 450);
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        setAuthError("Email already registered.");
+      } else {
+        setAuthError("Registration failed. Try again.");
+      }
+      setAuthSuccess("");
+    }
   };
 
   useEffect(() => {
@@ -117,11 +136,13 @@ function App() {
   }, [isAuthOpen]);
 
   return (
-    <BrowserRouter>
-      <Navbar
-        onLoginClick={() => openAuth("login")}
-        onRegisterClick={() => openAuth("register")}
-      />
+    <>
+      {!isAdminRoute && (
+        <Navbar
+          onLoginClick={() => openAuth("login")}
+          onRegisterClick={() => openAuth("register")}
+        />
+      )}
 
       {isAuthOpen && (
         <div
@@ -252,17 +273,84 @@ function App() {
         </div>
       )}
 
-      <Routes>
-        <Route path="/" element={<BooksPage />} />
-        {/* Keep these routes so direct links and redirects still work */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/books" element={<BooksPage />} />
-        <Route path="/books/:id" element={<BookDetailPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </BrowserRouter>
+      <div>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <BooksPage />
+              )
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <LoginPage />
+              )
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <RegisterPage />
+              )
+            }
+          />
+          <Route
+            path="/books"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <BooksPage />
+              )
+            }
+          />
+          <Route
+            path="/books/:id"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <BookDetailPage />
+              )
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <Navigate to="/my-library" replace />
+              )
+            }
+          />
+          <Route
+            path="/my-library"
+            element={
+              role === "ADMIN" ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <MyLibraryPage />
+              )
+            }
+          />
+          <Route path="/admin" element={<AdminPage />} />
+        </Routes>
+      </div>
+
+      {!isAdminRoute && <Footer />}
+    </>
   );
 }
 
