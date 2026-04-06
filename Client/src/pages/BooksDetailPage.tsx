@@ -20,12 +20,26 @@ interface Book {
   badge?: string | null;
 }
 
+interface RentalSummary {
+  id: number;
+  bookTitle: string;
+  status: string;
+  collectionCode?: string;
+  pickupDeadline?: string | null;
+}
+
 const COPPER_GRADIENT =
   "linear-gradient(100deg, #8f5637 0%, #c4865f 48%, #9b613f 100%)";
 const GOLD_GRADIENT =
   "linear-gradient(90deg, #6B3A2A 0%, #C68642 50%, #6B3A2A 100%)";
 const SILVER_TEXT = "#c0c0c0";
 const SILVER_MUTED = "rgba(192,192,192,0.72)";
+const ACTIVE_RENTAL_STATUSES = new Set([
+  "RESERVED",
+  "PICKED_UP",
+  "OVERDUE",
+  "ACTIVE",
+]);
 
 const badgeColors: Record<string, { bg: string; color: string }> = {
   BESTSELLER: { bg: "#C68642", color: "#1a0800" },
@@ -47,7 +61,10 @@ function BookDetailPage() {
   const [loading, setLoading] = useState(true);
   const [rented, setRented] = useState(false);
   const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "">(""); 
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [isReserveModalOpen, setIsReserveModalOpen] = useState(false);
+  const [isReserving, setIsReserving] = useState(false);
+  const [activeRentalCount, setActiveRentalCount] = useState(0);
 
   // Fetch current book
   useEffect(() => {
@@ -67,6 +84,48 @@ function BookDetailPage() {
   useEffect(() => {
     api.get("/books").then((res) => setAllBooks(res.data));
   }, []);
+
+  useEffect(() => {
+    if (!token || !book) {
+      setActiveRentalCount(0);
+      return;
+    }
+
+    api
+      .get("/rentals/my")
+      .then((res) => {
+        const userRentals = (res.data ?? []) as RentalSummary[];
+        const activeRentals = userRentals.filter((r) =>
+          ACTIVE_RENTAL_STATUSES.has(r.status),
+        );
+
+        setActiveRentalCount(activeRentals.length);
+        setRented(activeRentals.some((r) => r.bookTitle === book.title));
+      })
+      .catch(() => {
+        setActiveRentalCount(0);
+      });
+  }, [token, book]);
+
+  useEffect(() => {
+    if (!isReserveModalOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isReserving) {
+        setIsReserveModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onEsc);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [isReserveModalOpen, isReserving]);
 
   // ── Loading state ──
   if (loading) {
@@ -161,41 +220,84 @@ function BookDetailPage() {
 
   // ── Derived state — defined AFTER book is confirmed not null ──
   const available = book.copiesAvailable > 0;
+  const rentalLimitReached = activeRentalCount >= 3 && !rented;
 
-  // ── Rent handler — real API call ──
-  const handleRent = async () => {
+  const formatPickupDeadline = (value?: string | null) => {
+    if (!value) return "within 24 hours";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "within 24 hours";
+
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const openReservationModal = () => {
     if (!token) {
-      setMessage("Please login to rent this book.");
+      setMessage("Please login to reserve this book.");
       setMessageType("error");
       return;
     }
 
+    if (!available || rented || rentalLimitReached || isReserving) {
+      return;
+    }
+
+    setIsReserveModalOpen(true);
+  };
+
+  // ── Reservation confirm handler ──
+  const handleRent = async () => {
+    if (!token) {
+      setMessage("Please login to reserve this book.");
+      setMessageType("error");
+      return;
+    }
+
+    setIsReserving(true);
+
     try {
-      await api.post("/rentals", { bookId: Number(id) });
+      const response = await api.post("/rentals", { bookId: Number(id) });
+      const reservation = response.data as RentalSummary;
+
       setRented(true);
+      setActiveRentalCount((prev) => prev + 1);
       setMessage(
-        "Book rented successfully! A confirmation email will be sent to you shortly."
+        `Reservation confirmed. Ticket ${reservation.collectionCode ?? "RN-0000"} is ready. Collect by ${formatPickupDeadline(reservation.pickupDeadline ?? null)} at The Reader's Nook.`,
       );
       setMessageType("success");
-      // Update local copy count
+      setIsReserveModalOpen(false);
       setBook((prev) =>
-        prev ? { ...prev, copiesAvailable: prev.copiesAvailable - 1 } : prev
+        prev ? { ...prev, copiesAvailable: prev.copiesAvailable - 1 } : prev,
       );
     } catch (err: any) {
-      if (err.response?.status === 400) {
+      const errorMsg = err.response?.data?.error || "";
+      if (errorMsg.includes("already have an active rental")) {
+        setMessage("You already have this book reserved. Check My Library.");
+      } else if (errorMsg.includes("Rental limit reached")) {
+        setMessage(
+          "Rental limit reached. Return or complete an existing rental first.",
+        );
+      } else if (errorMsg.includes("No copies available")) {
         setMessage("No copies available right now.");
+      } else if (err.response?.status === 400) {
+        setMessage(errorMsg || "Unable to reserve this book right now.");
       } else if (err.response?.status === 401) {
-        setMessage("Please login to rent this book.");
+        setMessage("Please login to reserve this book.");
       } else {
-        setMessage("Failed to rent. Please try again.");
+        setMessage("Failed to reserve. Please try again.");
       }
       setMessageType("error");
+    } finally {
+      setIsReserving(false);
     }
   };
 
   return (
     <div style={{ minHeight: "100vh", position: "relative" }}>
-
       {/* Silk background */}
       <div style={{ position: "fixed", inset: 0, zIndex: 0 }}>
         <Silk
@@ -232,9 +334,7 @@ function BookDetailPage() {
         }}
       >
         {/* Back button */}
-        <div
-          style={{ width: "100%", maxWidth: "900px", marginBottom: "32px" }}
-        >
+        <div style={{ width: "100%", maxWidth: "900px", marginBottom: "32px" }}>
           <button
             onClick={() => navigate("/books")}
             style={{
@@ -524,9 +624,7 @@ function BookDetailPage() {
                       padding: "14px 12px",
                       textAlign: "center",
                       borderRight:
-                        i < 2
-                          ? "1px solid rgba(198,134,66,0.12)"
-                          : "none",
+                        i < 2 ? "1px solid rgba(198,134,66,0.12)" : "none",
                     }}
                   >
                     <span
@@ -627,8 +725,7 @@ function BookDetailPage() {
                     style={{
                       fontSize: "13px",
                       margin: 0,
-                      color:
-                        messageType === "success" ? "#7ab87a" : "#b87a7a",
+                      color: messageType === "success" ? "#7ab87a" : "#b87a7a",
                       fontFamily: "Inter, sans-serif",
                       lineHeight: 1.5,
                     }}
@@ -648,22 +745,31 @@ function BookDetailPage() {
                 }}
               >
                 <button
-                  onClick={handleRent}
-                  disabled={!available || rented}
+                  onClick={openReservationModal}
+                  disabled={
+                    !available || rented || rentalLimitReached || isReserving
+                  }
+                  title={
+                    rentalLimitReached ? "Rental limit reached." : undefined
+                  }
                   style={{
                     padding: "13px 32px",
                     background:
-                      !available || rented
+                      !available || rented || rentalLimitReached || isReserving
                         ? "rgba(255,255,255,0.06)"
                         : COPPER_GRADIENT,
                     color:
-                      !available || rented ? SILVER_MUTED : "#fff8ee",
+                      !available || rented || rentalLimitReached || isReserving
+                        ? SILVER_MUTED
+                        : "#fff8ee",
                     border: "none",
                     borderRadius: "30px",
                     fontSize: "14px",
                     fontWeight: 700,
                     cursor:
-                      !available || rented ? "not-allowed" : "pointer",
+                      !available || rented || rentalLimitReached || isReserving
+                        ? "not-allowed"
+                        : "pointer",
                     letterSpacing: "0.5px",
                     fontFamily: "Inter, sans-serif",
                     transition: "opacity 0.2s, transform 0.2s",
@@ -672,7 +778,12 @@ function BookDetailPage() {
                     gap: "8px",
                   }}
                   onMouseEnter={(e) => {
-                    if (available && !rented) {
+                    if (
+                      available &&
+                      !rented &&
+                      !rentalLimitReached &&
+                      !isReserving
+                    ) {
                       e.currentTarget.style.opacity = "0.85";
                       e.currentTarget.style.transform = "translateY(-1px)";
                     }
@@ -690,7 +801,15 @@ function BookDetailPage() {
                   >
                     <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6H6zm7 1.5L18.5 9H13V3.5zM6 4h5v7h7v9H6V4z" />
                   </svg>
-                  {rented ? "Rented ✓" : !available ? "Not Available" : "Rent this Book"}
+                  {rented
+                    ? "Reserved ✓"
+                    : !available
+                      ? "Not Available"
+                      : rentalLimitReached
+                        ? "Rental limit reached"
+                        : isReserving
+                          ? "Reserving..."
+                          : "Reserve for Pickup"}
                 </button>
 
                 <button
@@ -708,13 +827,11 @@ function BookDetailPage() {
                     transition: "border-color 0.2s, color 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(198,134,66,0.5)";
+                    e.currentTarget.style.borderColor = "rgba(198,134,66,0.5)";
                     e.currentTarget.style.color = "#C68642";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(192,192,192,0.2)";
+                    e.currentTarget.style.borderColor = "rgba(192,192,192,0.2)";
                     e.currentTarget.style.color = SILVER_MUTED;
                   }}
                 >
@@ -848,6 +965,147 @@ function BookDetailPage() {
           </div>
         </div>
       </div>
+
+      {isReserveModalOpen && (
+        <div
+          onClick={() => {
+            if (!isReserving) setIsReserveModalOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 30,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            background: "rgba(6,5,4,0.78)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(520px, 100%)",
+              borderRadius: "18px",
+              border: "1px solid rgba(198,134,66,0.35)",
+              background:
+                "linear-gradient(140deg, rgba(22,16,12,0.98) 0%, rgba(12,9,7,0.98) 100%)",
+              boxShadow: "0 24px 44px rgba(0,0,0,0.5)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "4px",
+                background:
+                  "linear-gradient(90deg, rgba(198,134,66,0.25) 0%, rgba(198,134,66,1) 50%, rgba(198,134,66,0.25) 100%)",
+              }}
+            />
+
+            <div style={{ padding: "24px" }}>
+              <p
+                style={{
+                  margin: "0 0 8px 0",
+                  color: "#c4865f",
+                  letterSpacing: "0.15em",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                Confirm Reservation
+              </p>
+              <h3
+                style={{
+                  margin: "0 0 10px 0",
+                  color: "#f2e6d9",
+                  fontSize: "24px",
+                }}
+              >
+                Reserve and Collect
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  color: SILVER_MUTED,
+                  lineHeight: 1.7,
+                  fontSize: "14px",
+                }}
+              >
+                This reservation holds a physical copy of{" "}
+                <strong style={{ color: "#ecd8c5" }}>{book.title}</strong>. You
+                must collect it in person from{" "}
+                <strong style={{ color: "#ecd8c5" }}>The Reader's Nook</strong>
+                within 24 hours, or your reservation may be marked overdue.
+              </p>
+
+              <div
+                style={{
+                  marginTop: "18px",
+                  borderRadius: "12px",
+                  border: "1px dashed rgba(198,134,66,0.35)",
+                  background: "rgba(255,255,255,0.02)",
+                  padding: "12px 14px",
+                  color: "rgba(192,192,192,0.86)",
+                  fontSize: "13px",
+                  lineHeight: 1.6,
+                }}
+              >
+                After confirmation you will receive a digital ticket and
+                collection code in My Library.
+              </div>
+
+              <div
+                style={{
+                  marginTop: "22px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={isReserving}
+                  onClick={() => setIsReserveModalOpen(false)}
+                  style={{
+                    border: "1px solid rgba(192,192,192,0.22)",
+                    background: "transparent",
+                    color: "rgba(192,192,192,0.9)",
+                    borderRadius: "999px",
+                    padding: "10px 18px",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    cursor: isReserving ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRent}
+                  disabled={isReserving}
+                  style={{
+                    border: "none",
+                    background: COPPER_GRADIENT,
+                    color: "#fff3e7",
+                    borderRadius: "999px",
+                    padding: "10px 20px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    fontSize: "13px",
+                    cursor: isReserving ? "not-allowed" : "pointer",
+                    opacity: isReserving ? 0.7 : 1,
+                  }}
+                >
+                  {isReserving ? "Reserving..." : "Confirm Reservation"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -342,7 +342,9 @@ function Carousel({
                   pointerEvents: isHovered ? "auto" : "none",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
                   <div
                     style={{
                       width: "38px",
@@ -359,7 +361,11 @@ function Carousel({
                       <img
                         src={book.imageUrl}
                         alt={`${book.title} thumbnail`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
                       />
                     ) : (
                       <>
@@ -490,7 +496,7 @@ function Carousel({
                     if (available) e.currentTarget.style.opacity = "1";
                   }}
                 >
-                  {available ? "Rent this Book →" : "Not Available"}
+                  {available ? "Reserve & Collect →" : "Not Available"}
                 </button>
               </div>
             </div>
@@ -828,7 +834,7 @@ function AudibleExclusivesSection({
                           (e.currentTarget.style.opacity = "1")
                         }
                       >
-                        Rent this Book →
+                        Reserve & Collect →
                       </button>
                     )}
                   </div>
