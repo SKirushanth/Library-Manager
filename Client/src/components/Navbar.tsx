@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -36,8 +36,10 @@ function Navbar({ onLoginClick, onRegisterClick }: NavbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const profileRef = useRef<HTMLDivElement | null>(null);
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/register";
 
@@ -53,13 +55,28 @@ function Navbar({ onLoginClick, onRegisterClick }: NavbarProps) {
 
   const handleLogout = () => {
     logout();
+    setProfileOpen(false);
     navigate("/login");
   };
 
   const navLinks = [
-    { to: "/dashboard", label: "Dashboard", show: !!token },
     { to: "/admin", label: "Admin", show: !!token && role === "ADMIN" },
   ];
+
+  useEffect(() => {
+    const handleOutside = (event: MouseEvent) => {
+      if (!profileRef.current) return;
+      if (!profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+
+    if (profileOpen) {
+      window.addEventListener("mousedown", handleOutside);
+    }
+
+    return () => window.removeEventListener("mousedown", handleOutside);
+  }, [profileOpen]);
 
   return (
     <nav
@@ -158,29 +175,100 @@ function Navbar({ onLoginClick, onRegisterClick }: NavbarProps) {
       {/* ── RIGHT: Auth ── */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {token ? (
-          <button
-            onClick={handleLogout}
-            style={
-              {
-                padding: "10px 22px",
-                border: "none",
+          <div ref={profileRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              aria-label="Open profile menu"
+              onClick={() => setProfileOpen((prev) => !prev)}
+              style={{
+                width: "40px",
+                height: "40px",
                 borderRadius: "999px",
-                cursor: "pointer",
-                fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
-                fontSize: "12px",
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                background: COPPER_GRADIENT,
+                border: "1px solid rgba(196,134,95,0.5)",
+                background: "rgba(10,9,8,0.72)",
                 color: SILVER_TEXT,
-                fontWeight: 700,
-                transition: "opacity 0.2s ease",
-              } as React.CSSProperties
-            }
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.86")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Logout
-          </button>
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.01 0-9 2.24-9 5v1a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-1c0-2.76-3.99-5-9-5Z" />
+              </svg>
+            </button>
+
+            {profileOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "48px",
+                  right: 0,
+                  minWidth: "180px",
+                  background: "rgba(12,10,8,0.96)",
+                  border: "1px solid rgba(196,134,95,0.35)",
+                  borderRadius: "12px",
+                  boxShadow: "0 14px 30px rgba(0,0,0,0.45)",
+                  padding: "8px",
+                  display: "grid",
+                  gap: "4px",
+                  zIndex: 1100,
+                }}
+              >
+                {role !== "ADMIN" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      navigate("/my-library");
+                    }}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: SILVER_TEXT,
+                      textAlign: "left",
+                      padding: "10px",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
+                      fontSize: "12px",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    My Library
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  style={{
+                    border: "none",
+                    background: COPPER_GRADIENT,
+                    color: SILVER_TEXT,
+                    textAlign: "left",
+                    padding: "10px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
+                    fontSize: "12px",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    fontWeight: 700,
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           !isAuthRoute && (
             <>
@@ -311,25 +399,51 @@ function Navbar({ onLoginClick, onRegisterClick }: NavbarProps) {
               </Link>
             ))}
           {token ? (
-            <button
-              onClick={handleLogout}
-              style={{
-                background: COPPER_GRADIENT,
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "999px",
-                cursor: "pointer",
-                width: "fit-content",
-                fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
-                fontSize: "12px",
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                fontWeight: 700,
-                color: SILVER_TEXT,
-              }}
-            >
-              Logout
-            </button>
+            <>
+              {role !== "ADMIN" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/my-library");
+                  }}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: SILVER_TEXT,
+                    fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
+                    fontSize: "13px",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    width: "fit-content",
+                  }}
+                >
+                  My Library
+                </button>
+              )}
+
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: COPPER_GRADIENT,
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "999px",
+                  cursor: "pointer",
+                  width: "fit-content",
+                  fontFamily: 'Inter, Geist, "Segoe UI", sans-serif',
+                  fontSize: "12px",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  color: SILVER_TEXT,
+                }}
+              >
+                Logout
+              </button>
+            </>
           ) : (
             !isAuthRoute && (
               <>
