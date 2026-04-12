@@ -1,0 +1,16 @@
+FROM node:20-alpine AS build
+WORKDIR /app
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+COPY package.json .
+COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts ./
+COPY index.html .
+COPY public ./public
+COPY src ./src
+RUN npm install
+RUN npm run build
+
+FROM nginx:stable-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

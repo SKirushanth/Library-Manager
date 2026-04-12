@@ -1,0 +1,9 @@
+**/node_modules
+**/target
+**/dist
+**/.git
+**/.svn
+**/.hg
+npm-debug.log
+yarn-error.log
+.DS_Store
