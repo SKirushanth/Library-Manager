@@ -1,16 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import type { NavbarProps } from "../types";
 
 const COPPER_GRADIENT =
   "linear-gradient(100deg, #8f5637 0%, #c4865f 48%, #9b613f 100%)";
 const SILVER_TEXT = "#c0c0c0";
 const NAV_BG = "rgba(10, 9, 8, 0.38)";
-
-interface NavbarProps {
-  onLoginClick?: () => void;
-  onRegisterClick?: () => void;
-}
 
 function GradientText({
   children,

@@ -3,19 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import Silk from "../components/Silk";
-
-interface Rental {
-  id: number;
-  username?: string;
-  bookTitle: string;
-  bookAuthor: string;
-  coverColor: string;
-  rentalDate: string;
-  returnDate: string | null;
-  status: string;
-  collectionCode: string | null;
-  pickupDeadline: string | null;
-}
+import type { Rental } from "../types";
 
 const COPPER = "#c4865f";
 const SILVER_MUTED = "rgba(192,192,192,0.7)";

@@ -3,16 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Silk from "../components/Silk";
-
-interface Rental {
-  id: number;
-  bookTitle: string;
-  bookAuthor: string;
-  coverColor: string;
-  rentalDate: string;
-  returnDate: string;
-  status: string;
-}
+import type { Rental } from "../types";
 
 function DashboardPage() {
   const { token, userName } = useAuth();

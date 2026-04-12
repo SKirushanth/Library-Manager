@@ -3,12 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import Silk from "../components/Silk";
-
-type AuthMode = "login" | "register";
-
-interface AuthRoutePageProps {
-  initialMode: AuthMode;
-}
+import type { AuthMode, AuthRoutePageProps } from "../types";
 
 function AuthRoutePage({ initialMode }: AuthRoutePageProps) {
   const { login } = useAuth();

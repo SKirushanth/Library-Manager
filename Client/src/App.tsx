@@ -10,9 +10,8 @@ import AdminPage from "./pages/AdminPage";
 import Footer from "./components/Footer";
 import { useAuth } from "./context/AuthContext.tsx";
 import api from "./services/api";
+import type { AuthMode } from "./types";
 import "./App.css";
-
-type AuthMode = "login" | "register";
 
 function App() {
   const { login, role } = useAuth();

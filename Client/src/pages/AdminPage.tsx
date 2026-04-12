@@ -3,34 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import Silk from "../components/Silk";
-
-// ── INTERFACES ──
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  description?: string;
-  pages: number;
-  rating: number;
-  copiesAvailable: number;
-  badge: string | null;
-  coverColor: string;
-  spineColor: string;
-  imageUrl?: string;
-}
-
-interface Rental {
-  id: number;
-  bookTitle: string;
-  bookAuthor: string;
-  username?: string;
-  coverColor: string;
-  rentalDate: string;
-  returnDate: string | null;
-  collectionCode: string | null;
-  pickupDeadline: string | null;
-  status: string;
-}
+import type { Book, Rental } from "../types";
 
 // ── BRAND CONSTANTS ──
 const COPPER_GRADIENT =

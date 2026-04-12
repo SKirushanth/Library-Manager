@@ -3,30 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Silk from "../components/Silk";
 import api from "../services/api";
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  description: string;
-  copiesAvailable: number;
-  pages: number;
-  rating: number;
-  imageUrl?: string | null;
-  genre: string;
-  published: string;
-  coverColor: string;
-  spineColor: string;
-  badge?: string | null;
-}
-
-interface RentalSummary {
-  id: number;
-  bookTitle: string;
-  status: string;
-  collectionCode?: string;
-  pickupDeadline?: string | null;
-}
+import type { Book, RentalSummary } from "../types";
 
 const COPPER_GRADIENT =
   "linear-gradient(100deg, #8f5637 0%, #c4865f 48%, #9b613f 100%)";
