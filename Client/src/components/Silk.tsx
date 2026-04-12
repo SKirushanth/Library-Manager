@@ -1,31 +1,8 @@
 /* eslint-disable react/no-unknown-property */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef, useMemo, useLayoutEffect } from "react";
-import type { RefObject } from "react";
 import { Color } from "three";
-import type { Mesh, PlaneGeometry, ShaderMaterial } from "three";
-
-type SilkUniforms = {
-  uSpeed: { value: number };
-  uScale: { value: number };
-  uNoiseIntensity: { value: number };
-  uColor: { value: Color };
-  uRotation: { value: number };
-  uTime: { value: number };
-};
-
-interface SilkPlaneProps {
-  uniforms: SilkUniforms;
-  meshRef: RefObject<Mesh<PlaneGeometry, ShaderMaterial> | null>;
-}
-
-interface SilkProps {
-  speed?: number;
-  scale?: number;
-  color?: string;
-  noiseIntensity?: number;
-  rotation?: number;
-}
+import type { SilkPlaneProps, SilkProps, SilkUniforms } from "../types";
 
 const hexToNormalizedRGB = (hex: string): [number, number, number] => {
   hex = hex.replace("#", "");

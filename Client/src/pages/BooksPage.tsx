@@ -2,20 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Silk from "../components/Silk";
 import api from "../services/api";
-
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  description: string;
-  copiesAvailable: number;
-  pages: number;
-  rating: number;
-  imageUrl?: string | null;
-  badge?: string | null;
-  coverColor: string;
-  spineColor: string;
-}
+import type { Book } from "../types";
 
 const COPPER_GRADIENT =
   "linear-gradient(100deg, #8f5637 0%, #c4865f 48%, #9b613f 100%)";
