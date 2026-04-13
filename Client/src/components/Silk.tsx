@@ -2,6 +2,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef, useMemo, useLayoutEffect } from "react";
 import { Color } from "three";
+import type { Mesh, PlaneGeometry, ShaderMaterial } from "three";
 import type { SilkPlaneProps, SilkProps, SilkUniforms } from "../types";
 
 const hexToNormalizedRGB = (hex: string): [number, number, number] => {
