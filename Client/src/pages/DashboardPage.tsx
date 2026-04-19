@@ -5,6 +5,10 @@ import api from "../services/api";
 import Silk from "../components/Silk";
 import type { Rental } from "../types";
 
+const ACTIVE_RENTAL_STATUSES = new Set(["RESERVED", "PICKED_UP", "OVERDUE"]);
+const normalizeStatus = (status: string) =>
+  status === "ACTIVE" ? "PICKED_UP" : status;
+
 function DashboardPage() {
   const { token, userName } = useAuth();
   const navigate = useNavigate();
@@ -20,7 +24,12 @@ function DashboardPage() {
     api
       .get("/rentals/my")
       .then((res) => {
-        setRentals(res.data ?? []);
+        setRentals(
+          (res.data ?? []).map((r: Rental) => ({
+            ...r,
+            status: normalizeStatus(r.status),
+          })),
+        );
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -28,10 +37,11 @@ function DashboardPage() {
 
   const stats = useMemo(
     () => [
-      { label: "Total Rented", value: rentals.length },
+      { label: "Total Rentals", value: rentals.length },
       {
         label: "Active",
-        value: rentals.filter((r) => r.status === "ACTIVE").length,
+        value: rentals.filter((r) => ACTIVE_RENTAL_STATUSES.has(r.status))
+          .length,
       },
       {
         label: "Returned",
@@ -115,7 +125,7 @@ function DashboardPage() {
 
                 <span
                   className={`dashboard-status-badge ${
-                    rental.status === "ACTIVE"
+                    ACTIVE_RENTAL_STATUSES.has(rental.status)
                       ? "dashboard-status-active"
                       : "dashboard-status-returned"
                   }`}

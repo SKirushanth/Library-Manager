@@ -11,6 +11,7 @@ const COPPER_GRADIENT =
 const SILVER_TEXT = "#c0c0c0";
 const normalizeStatus = (status: string) =>
   status === "ACTIVE" ? "PICKED_UP" : status;
+const ACTIVE_RENTAL_STATUSES = new Set(["RESERVED", "PICKED_UP", "OVERDUE"]);
 
 // ── GRADIENT TEXT COMPONENT ──
 function GradientText({
@@ -239,16 +240,15 @@ export default function AdminPage() {
   );
   const inCirculationRentals = rentals.filter((r) => {
     const status = normalizeStatus(r.status);
-    return (
-      status === "PICKED_UP" || (status === "OVERDUE" && r.returnDate !== null)
-    );
+    return status === "PICKED_UP" || status === "OVERDUE";
   });
-  const activeRentals = rentals.filter(
-    (r) => normalizeStatus(r.status) !== "RETURNED",
+  const activeRentals = rentals.filter((r) =>
+    ACTIVE_RENTAL_STATUSES.has(normalizeStatus(r.status)),
   );
   const returnedRentals = rentals.filter(
     (r) => normalizeStatus(r.status) === "RETURNED",
   );
+  const totalRentals = rentals.length;
 
   const adminTabs = [
     { id: "overview", label: "Dashboard Overview" },
@@ -556,7 +556,7 @@ export default function AdminPage() {
                           marginBottom: "8px",
                         }}
                       >
-                        Total Returns
+                        Total Rentals
                       </div>
                       <div
                         style={{
@@ -565,7 +565,7 @@ export default function AdminPage() {
                           fontWeight: 600,
                         }}
                       >
-                        {rentalsLoading ? "..." : returnedRentals.length}
+                        {rentalsLoading ? "..." : totalRentals}
                       </div>
                     </div>
                   </div>
