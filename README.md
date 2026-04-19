@@ -2,7 +2,7 @@
 
 Library Manager is a full-stack web application for managing books and rentals with role-based access for users and admins.
 
-It uses Docker Compose for running frontend and backend services, and a hosted PostgreSQL database (Supabase).
+It uses Docker Compose for running frontend and backend services, with a local PostgreSQL database container by default.
 
 ## Technologies
 
@@ -24,7 +24,7 @@ It uses Docker Compose for running frontend and backend services, and a hosted P
 
 ### Database and Infra
 
-- PostgreSQL (Supabase)
+- PostgreSQL
 - Docker
 - Docker Compose
 - Nginx (frontend container runtime)
@@ -49,7 +49,7 @@ It uses Docker Compose for running frontend and backend services, and a hosted P
 3. Frontend stores token and includes it on protected API calls.
 4. Users browse books and create reservations.
 5. Admin manages inventory and rental status transitions.
-6. Data is stored in PostgreSQL (Supabase).
+6. Data is stored in PostgreSQL.
 
 ## Project Structure
 
@@ -73,9 +73,9 @@ Library-Manager/
 Create a `.env` file in the repository root:
 
 ```env
-DB_URL=jdbc:postgresql://<SUPABASE_HOST>:5432/postgres?sslmode=require
-SPRING_DATASOURCE_USERNAME=<SUPABASE_USER>
-SPRING_DATASOURCE_PASSWORD=<SUPABASE_PASSWORD>
+DB_URL=jdbc:postgresql://db:5432/Library_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=admin123
 VITE_API_URL=http://localhost:8080/api
 ```
 
@@ -108,7 +108,7 @@ docker compose down
 
 ## One-Time Data Migration (Optional)
 
-If you have old local Docker PostgreSQL data and want to move it to Supabase:
+If you want to move your local Docker PostgreSQL data to Supabase later:
 
 ```bash
 docker run --name lm-pg-migrate -d \
@@ -139,5 +139,5 @@ docker stop lm-pg-migrate
 
 ## Notes
 
-- Current setup uses hosted PostgreSQL (Supabase), not a local DB container.
-- If you switch back to local PostgreSQL in Docker, update compose and datasource config accordingly.
+- Current setup uses a local PostgreSQL container by default.
+- You can switch to Supabase later by changing `DB_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`.
