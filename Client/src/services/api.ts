@@ -18,13 +18,15 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 errors globally — redirect to login
+// Handle auth errors globally — clear session and redirect to login
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token')
       localStorage.removeItem('role')
+      localStorage.removeItem('userId')
+      localStorage.removeItem('userName')
       window.location.href = '/login'
     }
     return Promise.reject(error)
