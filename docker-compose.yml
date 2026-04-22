@@ -1,34 +1,14 @@
 services:
-  db:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: Library_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin123
-    volumes:
-      - library_manager_db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d Library_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
   backend:
     build:
       context: ./Server
       dockerfile: Dockerfile
     environment:
-      DB_URL: ${DB_URL:-jdbc:postgresql://db:5432/Library_db}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-postgres}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-admin123}
+      DB_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     build:
@@ -40,6 +20,3 @@ services:
       - "3000:80"
     depends_on:
       - backend
-
-volumes:
-  library_manager_db_data:
