@@ -2,7 +2,7 @@
 
 Library Manager is a full-stack web application for managing books and rentals with role-based access for users and admins.
 
-It uses Docker Compose for running frontend and backend services, with a local PostgreSQL database container by default.
+It uses Docker Compose for running frontend and backend services. PostgreSQL is expected to be provided externally (Supabase in this setup).
 
 ## Technologies
 
@@ -28,6 +28,7 @@ It uses Docker Compose for running frontend and backend services, with a local P
 - Docker
 - Docker Compose
 - Nginx (frontend container runtime)
+- Supabase (hosted PostgreSQL)
 
 ## Features
 
@@ -41,6 +42,13 @@ It uses Docker Compose for running frontend and backend services, with a local P
   - Confirm pickup and return actions
   - Track rental lifecycle
 - Dockerized deployment flow for local development
+
+## Production-Safety Defaults
+
+- JWT secret must come from environment variables
+- CORS origins are environment-driven
+- Default admin seeding is disabled in the `prod` profile
+- Image upload configuration is environment-driven for the frontend build
 
 ## Process (How the App Works)
 
@@ -70,13 +78,35 @@ Library-Manager/
 
 ### 2) Configure Environment
 
-Create a `.env` file in the repository root:
+Create a `.env` file in the repository root. You can copy from `.env.example` and fill values.
 
 ```env
-DB_URL=jdbc:postgresql://db:5432/Library_db
+DB_URL=jdbc:postgresql://db.<SUPABASE_PROJECT_REF>.supabase.co:5432/postgres?sslmode=require
 SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=admin123
+SPRING_DATASOURCE_PASSWORD=<SUPABASE_DB_PASSWORD>
+
+JWT_SECRET=<BASE64_ENCODED_SECRET>
+JWT_EXPIRATION=86400000
+
 VITE_API_URL=http://localhost:8080/api
+APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+SPRING_PROFILES_ACTIVE=local
+
+# Optional admin seed (used in non-prod profile only)
+APP_SEED_ADMIN_EMAIL=admin@library.com
+APP_SEED_ADMIN_PASSWORD=admin123
+
+# Optional Cloudinary upload support for admin image uploads
+VITE_CLOUDINARY_CLOUD_NAME=<your-cloud-name>
+VITE_CLOUDINARY_UPLOAD_PRESET=<your-unsigned-preset>
+```
+
+Generate a JWT secret (PowerShell):
+
+```powershell
+$bytes = New-Object byte[] 64
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
 ```
 
 ### 3) Build and Start
@@ -105,39 +135,19 @@ docker compose down
 - Login/register works
 - Books API returns records
 - Admin actions (add book, pickup/return) work
+- Image upload works if Cloudinary vars are set
 
-## One-Time Data Migration (Optional)
+## Default Admin (Non-Prod)
 
-If you want to move your local Docker PostgreSQL data to Supabase later:
+When `SPRING_PROFILES_ACTIVE` is not `prod`, app startup can seed a default admin user:
 
-```bash
-docker run --name lm-pg-migrate -d \
-	-e POSTGRES_DB=Library_db \
-	-e POSTGRES_USER=postgres \
-	-e POSTGRES_PASSWORD=admin123 \
-	-v library-manager_db_data:/var/lib/postgresql/data \
-	-p 55432:5432 postgres:15-alpine
+- Email: `admin@library.com`
+- Password: `admin123`
 
-docker exec lm-pg-migrate pg_dump -U postgres -d Library_db -Fc > backup.dump
-
-pg_restore --no-owner --no-privileges --clean --if-exists \
-	--dbname="postgresql://<DB_USER>:<DB_PASSWORD>@<SUPABASE_HOST>:5432/postgres?sslmode=require" \
-	backup.dump
-
-docker stop lm-pg-migrate
-```
-
-## How This Can Be Improved
-
-- Add health checks in `docker-compose.yml` for backend and frontend
-- Add CI pipeline for lint/build/test and Docker image validation
-- Introduce centralized logging and monitoring
-- Add unit/integration tests for critical rental workflows
-- Add API documentation (OpenAPI/Swagger)
-- Move secrets to a secure secret manager instead of plain `.env`
-- Add rate limiting and stricter security headers for production
+For production, set `SPRING_PROFILES_ACTIVE=prod` and create admin accounts through a controlled process.
 
 ## Notes
 
-- Current setup uses a local PostgreSQL container by default.
-- You can switch to Supabase later by changing `DB_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`.
+- This repository does not include a local database container in Compose.
+- Supabase SSL is enabled through `sslmode=require` in `DB_URL`.
+- Keep `.env` local only. It is ignored by git.

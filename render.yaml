@@ -15,5 +15,7 @@ services:
         sync: false
       - key: JWT_EXPIRATION
         value: 86400000
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
       - key: SPRING_PROFILES_ACTIVE
         value: prod
