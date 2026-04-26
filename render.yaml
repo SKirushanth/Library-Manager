@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: book-rental-backend
+    runtime: docker
+    dockerfilePath: ./Server/Dockerfile
+    dockerContext: ./Server
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: 86400000
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
