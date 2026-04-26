@@ -1,107 +1,73 @@
 # Library Manager
 
-Library Manager is a full-stack web application for managing books and rentals with role-based access for users and admins.
+Library Manager is a full-stack web app for browsing books, reserving rentals, and managing inventory with role-based access (USER and ADMIN).
 
-It uses Docker Compose for running frontend and backend services. PostgreSQL is expected to be provided externally (Supabase in this setup).
+The project runs with Docker Compose for frontend and backend containers, and uses an external PostgreSQL database (Supabase in the current setup).
 
-## Technologies
+## Stack
 
 ### Frontend
-
 - React 19
 - TypeScript
 - Vite
 - Axios
 - React Router
+- Nginx (container runtime)
 
 ### Backend
-
 - Java 17
 - Spring Boot 4
-- Spring Security (JWT)
+- Spring Security + JWT
 - Spring Data JPA
 - Maven
 
-### Database and Infra
+### Infra
+- Docker + Docker Compose
+- PostgreSQL (Supabase)
 
-- PostgreSQL
-- Docker
-- Docker Compose
-- Nginx (frontend container runtime)
-- Supabase (hosted PostgreSQL)
+## Architecture At A Glance
 
-## Features
+1. Frontend calls backend API (`/api/**`) using `VITE_API_URL`.
+2. Backend validates JWT for protected routes.
+3. Backend persists data to PostgreSQL (Supabase connection via `DB_URL`).
+4. Admin workflows manage rental lifecycle (reserve, pickup, return).
 
-- User registration and login with JWT authentication
-- Role-based authorization (USER, ADMIN)
-- Browse and search books
-- Book detail view and reservation flow
-- My Library page with user rental history/status
-- Admin dashboard to:
-  - Add and manage books
-  - Confirm pickup and return actions
-  - Track rental lifecycle
-- Dockerized deployment flow for local development
+## Important Setup Facts
 
-## Production-Safety Defaults
-
-- JWT secret must come from environment variables
-- CORS origins are environment-driven
-- Default admin seeding is disabled in the `prod` profile
-- Image upload configuration is environment-driven for the frontend build
-
-## Process (How the App Works)
-
-1. A user registers or logs in.
-2. Backend returns JWT and role info.
-3. Frontend stores token and includes it on protected API calls.
-4. Users browse books and create reservations.
-5. Admin manages inventory and rental status transitions.
-6. Data is stored in PostgreSQL.
+- Compose includes **frontend + backend only**. It does **not** include a `db` service.
+- You must provide external DB credentials (Supabase recommended).
+- JWT secret is required and should be a strong Base64 value.
+- Admin seed account runs only outside `prod` profile.
 
 ## Project Structure
 
 ```text
 Library-Manager/
-|- Client/         # React + TypeScript frontend
-|- Server/         # Spring Boot backend
+|- Client/                # React + TypeScript app
+|- Server/                # Spring Boot API
 |- docker-compose.yml
+|- .env.example           # Environment template
 |- README.md
 ```
 
-## How to Run the Project
+## Quick Start (Local With Docker)
 
 ### 1) Prerequisites
 
-- Docker Desktop installed and running
-- Docker Compose available
+- Docker Desktop running
+- Docker Compose v2
 
-### 2) Configure Environment
+### 2) Create Environment File
 
-Create a `.env` file in the repository root. You can copy from `.env.example` and fill values.
+From repo root, copy the template:
 
-```env
-DB_URL=jdbc:postgresql://db.<SUPABASE_PROJECT_REF>.supabase.co:5432/postgres?sslmode=require
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=<SUPABASE_DB_PASSWORD>
-
-JWT_SECRET=<BASE64_ENCODED_SECRET>
-JWT_EXPIRATION=86400000
-
-VITE_API_URL=http://localhost:8080/api
-APP_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
-SPRING_PROFILES_ACTIVE=local
-
-# Optional admin seed (used in non-prod profile only)
-APP_SEED_ADMIN_EMAIL=admin@library.com
-APP_SEED_ADMIN_PASSWORD=admin123
-
-# Optional Cloudinary upload support for admin image uploads
-VITE_CLOUDINARY_CLOUD_NAME=<your-cloud-name>
-VITE_CLOUDINARY_UPLOAD_PRESET=<your-unsigned-preset>
+```powershell
+Copy-Item .env.example .env
 ```
 
-Generate a JWT secret (PowerShell):
+Then edit `.env` with your actual values.
+
+### 3) Generate JWT Secret (PowerShell)
 
 ```powershell
 $bytes = New-Object byte[] 64
@@ -109,45 +75,97 @@ $bytes = New-Object byte[] 64
 [Convert]::ToBase64String($bytes)
 ```
 
-### 3) Build and Start
+Use that output as `JWT_SECRET`.
 
-From the repository root:
+### 4) Start
 
 ```bash
 docker compose up --build
 ```
 
-### 4) Access Services
+### 5) Access
 
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:8080/api
+- Backend API base: http://localhost:8080/api
 
-### 5) Stop Services
+### 6) Stop
 
 ```bash
 docker compose down
 ```
 
-## Basic Verification Checklist
+## Environment Variables
 
-- Frontend loads on port 3000
-- Backend responds on port 8080
-- Login/register works
-- Books API returns records
-- Admin actions (add book, pickup/return) work
-- Image upload works if Cloudinary vars are set
+Use `.env.example` as the source of truth.
 
-## Default Admin (Non-Prod)
+### Required for backend
 
-When `SPRING_PROFILES_ACTIVE` is not `prod`, app startup can seed a default admin user:
+- `DB_URL`:
+  - Example for Supabase:
+  - `jdbc:postgresql://db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `JWT_SECRET`
+
+### Optional backend settings
+
+- `JWT_EXPIRATION` (default: `86400000`)
+- `APP_CORS_ALLOWED_ORIGINS` (comma-separated origins)
+- `SPRING_PROFILES_ACTIVE` (`local` for local runs, `prod` for production)
+- `APP_SEED_ADMIN_EMAIL` (non-prod only)
+- `APP_SEED_ADMIN_PASSWORD` (non-prod only)
+
+### Frontend build variables
+
+- `VITE_API_URL` (default local API URL)
+- `VITE_CLOUDINARY_CLOUD_NAME` (optional)
+- `VITE_CLOUDINARY_UPLOAD_PRESET` (optional)
+
+## Default Admin (Non-Prod Only)
+
+When `SPRING_PROFILES_ACTIVE` is not `prod`, startup can seed an admin account:
 
 - Email: `admin@library.com`
 - Password: `admin123`
 
-For production, set `SPRING_PROFILES_ACTIVE=prod` and create admin accounts through a controlled process.
+For production, use your own controlled admin provisioning process.
 
-## Notes
+## Verification Checklist
 
-- This repository does not include a local database container in Compose.
-- Supabase SSL is enabled through `sslmode=require` in `DB_URL`.
-- Keep `.env` local only. It is ignored by git.
+After startup/deploy, confirm:
+
+1. Frontend loads.
+2. Backend starts without datasource/JWT errors.
+3. Auth register/login works.
+4. Books list endpoint responds.
+5. Reserve/pickup/return flows work.
+6. Cloudinary upload works (if cloud vars are set).
+
+## Troubleshooting
+
+### Backend fails on startup with datasource error
+
+- Verify `DB_URL`, username, password.
+- Ensure Supabase password is correct and host is reachable.
+- Keep `sslmode=require` in `DB_URL`.
+
+### CORS errors in browser
+
+- Add frontend origin to `APP_CORS_ALLOWED_ORIGINS`.
+- Restart backend after env changes.
+
+### Login/token issues
+
+- Ensure `JWT_SECRET` is non-empty and stable.
+- Regenerate and update if malformed.
+
+### Cloudinary upload fails
+
+- Check `VITE_CLOUDINARY_CLOUD_NAME` and `VITE_CLOUDINARY_UPLOAD_PRESET`.
+- Rebuild frontend container after changing Vite variables.
+
+## Security Notes
+
+- Never commit `.env`.
+- Keep production secrets in your hosting platform secret manager.
+- Disable non-prod seed credentials in production (`SPRING_PROFILES_ACTIVE=prod`).
