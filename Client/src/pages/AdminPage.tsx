@@ -245,7 +245,7 @@ export default function AdminPage() {
     { id: "overview", label: "Dashboard Overview" },
     { id: "books", label: "Manage Books" },
     { id: "rentals", label: "Manage Rentals" },
-  ];
+  ] as const;
 
   return (
     <>
@@ -370,7 +370,7 @@ export default function AdminPage() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id)}
                     onMouseEnter={() => setHoveredTab(tab.id)}
                     onMouseLeave={() => setHoveredTab(null)}
                     style={{

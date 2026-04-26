@@ -116,7 +116,7 @@ function Carousel({
     });
   };
 
-  const ArrowBtn = ({ dir }: { dir: "left" | "right" }) => (
+  const renderArrowButton = (dir: "left" | "right") => (
     <button
       onClick={() => scroll(dir)}
       style={{
@@ -155,7 +155,7 @@ function Carousel({
 
   return (
     <div style={{ position: "relative", padding: "0 24px" }}>
-      <ArrowBtn dir="left" />
+      {renderArrowButton("left")}
       <div
         ref={scrollRef}
         style={{
@@ -490,7 +490,7 @@ function Carousel({
           );
         })}
       </div>
-      <ArrowBtn dir="right" />
+      {renderArrowButton("right")}
     </div>
   );
 }
