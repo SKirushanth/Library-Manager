@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { AxiosError } from "axios";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import Silk from "../components/Silk";
@@ -17,10 +18,14 @@ function AuthRoutePage({ initialMode }: AuthRoutePageProps) {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    setAuthMode(initialMode);
-    setError("");
-    setSuccess("");
-  }, [initialMode]);
+    if (authMode === initialMode) return;
+
+    const timer = window.setTimeout(() => {
+      setAuthMode(initialMode);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [initialMode, authMode]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -38,8 +43,9 @@ function AuthRoutePage({ initialMode }: AuthRoutePageProps) {
       window.setTimeout(() => {
         navigate(role === "ADMIN" ? "/admin" : "/books");
       }, 420);
-    } catch (err: any) {
-      if (err.response?.status === 403 || err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError;
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
         setError("Invalid email or password.");
       } else {
         setError("Something went wrong. Try again.");
@@ -69,8 +75,9 @@ function AuthRoutePage({ initialMode }: AuthRoutePageProps) {
         setAuthMode("login");
         setPassword("");
       }, 450);
-    } catch (err: any) {
-      if (err.response?.status === 400) {
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError;
+      if (axiosError.response?.status === 400) {
         setError("Email already registered.");
       } else {
         setError("Registration failed. Try again.");

@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unknown-property */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef, useMemo, useLayoutEffect } from "react";
 import { Color } from "three";
@@ -83,6 +82,8 @@ function SilkPlane({ uniforms, meshRef }: SilkPlaneProps) {
   useFrame((_, delta) => {
     const material = meshRef.current?.material;
     if (material) {
+      // three.js uniforms are mutable runtime state updated every frame.
+      // eslint-disable-next-line react-hooks/immutability
       material.uniforms.uTime.value += 0.1 * delta;
     }
   });

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import type { AxiosError } from "axios";
 import Navbar from "./components/Navbar.tsx";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -27,13 +28,13 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [authSuccess, setAuthSuccess] = useState("");
 
-  const resetAuthFields = () => {
+  const resetAuthFields = useCallback(() => {
     setEmail("");
     setPassword("");
     setName("");
     setAuthError("");
     setAuthSuccess("");
-  };
+  }, []);
 
   const openAuth = (mode: AuthMode) => {
     setAuthMode(mode);
@@ -43,14 +44,14 @@ function App() {
     setAuthSuccess("");
   };
 
-  const closeAuth = () => {
+  const closeAuth = useCallback(() => {
     setIsClosing(true);
     window.setTimeout(() => {
       setIsAuthOpen(false);
       setIsClosing(false);
       resetAuthFields();
     }, 240);
-  };
+  }, [resetAuthFields]);
 
   const navigateInApp = (path: string) => {
     window.history.pushState({}, "", path);
@@ -75,8 +76,9 @@ function App() {
         closeAuth();
         navigateInApp(userRole === "ADMIN" ? "/admin" : "/books");
       }, 500);
-    } catch (err: any) {
-      if (err.response?.status === 403 || err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError;
+      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
         setAuthError("Invalid email or password.");
       } else {
         setAuthError("Something went wrong. Try again.");
@@ -106,8 +108,9 @@ function App() {
         setAuthMode("login");
         setPassword("");
       }, 450);
-    } catch (err: any) {
-      if (err.response?.status === 400) {
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError;
+      if (axiosError.response?.status === 400) {
         setAuthError("Email already registered.");
       } else {
         setAuthError("Registration failed. Try again.");
@@ -125,7 +128,7 @@ function App() {
 
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, [isAuthOpen]);
+  }, [isAuthOpen, closeAuth]);
 
   useEffect(() => {
     document.body.style.overflow = isAuthOpen ? "hidden" : "";

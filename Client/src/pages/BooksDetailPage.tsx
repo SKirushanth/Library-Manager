@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import type { AxiosError } from "axios";
 import { useAuth } from "../context/AuthContext";
 import Silk from "../components/Silk";
 import api from "../services/api";
@@ -250,8 +251,9 @@ function BookDetailPage() {
       setBook((prev) =>
         prev ? { ...prev, copiesAvailable: prev.copiesAvailable - 1 } : prev,
       );
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || "";
+    } catch (err: unknown) {
+      const axiosError = err as AxiosError<{ error?: string }>;
+      const errorMsg = axiosError.response?.data?.error || "";
       if (errorMsg.includes("already have an active rental")) {
         setMessage("You already have this book reserved. Check My Library.");
       } else if (errorMsg.includes("Rental limit reached")) {
@@ -260,9 +262,9 @@ function BookDetailPage() {
         );
       } else if (errorMsg.includes("No copies available")) {
         setMessage("No copies available right now.");
-      } else if (err.response?.status === 400) {
+      } else if (axiosError.response?.status === 400) {
         setMessage(errorMsg || "Unable to reserve this book right now.");
-      } else if (err.response?.status === 401) {
+      } else if (axiosError.response?.status === 401) {
         setMessage("Please login to reserve this book.");
       } else {
         setMessage("Failed to reserve. Please try again.");
