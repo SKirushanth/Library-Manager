@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { uploadToCloudinary } from "../services/cloudinary";
 import Silk from "../components/Silk";
 import type { Book, Rental } from "../types";
 
@@ -50,9 +51,6 @@ export default function AdminPage() {
   const [badge, setBadge] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
-  const CLOUD_NAME = "df8aj6mzn";
-  const UPLOAD_PRESET = "library_preset";
 
   // ── EFFECTS & FETCHING ──
   useEffect(() => {
@@ -129,16 +127,9 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
     try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-        { method: "POST", body: formData },
-      );
-      const data = await response.json();
-      setImageUrl(data.secure_url ?? "");
+      const secureUrl = await uploadToCloudinary(file);
+      setImageUrl(secureUrl);
     } catch {
       setError("Image upload failed.");
     } finally {
