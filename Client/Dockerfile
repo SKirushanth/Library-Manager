@@ -4,7 +4,10 @@ WORKDIR /app
 
 # Cache dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm config set fetch-timeout 300000 \
+    && npm ci
 
 # Copy sources and build SPA
 COPY . .
@@ -17,4 +20,3 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
-

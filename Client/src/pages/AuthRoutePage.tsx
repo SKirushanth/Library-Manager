@@ -36,7 +36,7 @@ function AuthRoutePage({ initialMode }: AuthRoutePageProps) {
 
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { token, role, userId, name: userName } = response.data;
+      const { token, role, id: userId, name: userName } = response.data;
       login(token, role, userId, userName);
       setError("");
       setSuccess("Welcome back. Redirecting...");
