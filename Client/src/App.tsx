@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import type { AxiosError } from "axios";
 import Navbar from "./components/Navbar.tsx";
 import LoginPage from "./pages/LoginPage";
@@ -16,6 +22,7 @@ import "./App.css";
 
 function App() {
   const { login, role } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const isAdminRoute = location.pathname === "/admin";
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -53,11 +60,6 @@ function App() {
     }, 240);
   }, [resetAuthFields]);
 
-  const navigateInApp = (path: string) => {
-    window.history.pushState({}, "", path);
-    window.dispatchEvent(new PopStateEvent("popstate"));
-  };
-
   const handleLoginSubmit = async () => {
     if (!email || !password) {
       setAuthError("Please fill in all fields.");
@@ -74,11 +76,14 @@ function App() {
 
       window.setTimeout(() => {
         closeAuth();
-        navigateInApp(userRole === "ADMIN" ? "/admin" : "/books");
+        navigate(userRole === "ADMIN" ? "/admin" : "/books");
       }, 500);
     } catch (err: unknown) {
       const axiosError = err as AxiosError;
-      if (axiosError.response?.status === 403 || axiosError.response?.status === 401) {
+      if (
+        axiosError.response?.status === 403 ||
+        axiosError.response?.status === 401
+      ) {
         setAuthError("Invalid email or password.");
       } else {
         setAuthError("Something went wrong. Try again.");
