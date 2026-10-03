@@ -1,5 +1,6 @@
 package com.example.demo.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,10 +21,12 @@ public class Rental {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnoreProperties({"rentals", "password", "hibernateLazyInitializer", "handler"})
     private User user;
 
     @ManyToOne
     @JoinColumn(name = "book_id", nullable = false)
+    @JsonIgnoreProperties({"rentals", "hibernateLazyInitializer", "handler"})
     private Book book;
 
     private LocalDate rentalDate;
